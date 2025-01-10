@@ -5,6 +5,11 @@
  * brief      : 查询GPU计算核心数量
 **********************************************************************************************/
 
+/**
+ * 可以使用CUDA运行时API：cudaGetDeviceProperties，来查看每个GPU核心的信息
+ * 但目前无法通过CUDA运行时API查看GPU的总核心数量，因此需要通过下面这个getSPcores()函数查询
+ */
+
 #include <stdio.h>
 #include "../tools/common.cuh"
 
@@ -51,12 +56,12 @@ int getSPcores(cudaDeviceProp devProp)
 
 int main()
 {
-    int device_id = 0;
+    int device_id = 0;   // GPU设备索引号
     ErrorCheck(cudaSetDevice(device_id), __FILE__, __LINE__);
     
 
-    cudaDeviceProp prop;
-    ErrorCheck(cudaGetDeviceProperties(&prop, device_id), __FILE__, __LINE__);
+    cudaDeviceProp prop;   // 需要先初始化一个结构体变量作为参数，传递给cudaGetDeviceProperties运行时API
+    ErrorCheck(cudaGetDeviceProperties(&prop, device_id), __FILE__, __LINE__);   // 注意这里需要传入结构体prop的地址
 
     printf("Compute cores is %d.\n", getSPcores(prop));
 

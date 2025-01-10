@@ -5,6 +5,10 @@
  * brief      : 核函数记时
 ***********************************************************************************************/
 
+/**
+ * CUDA事件（cudaEvent_t）可为主机代码或设备代码计时
+ */
+
 #include <stdio.h>
 #include "../tools/common.cuh"
 
@@ -102,26 +106,26 @@ int main(void)
     float t_sum = 0;
     for (int repeat = 0; repeat <= NUM_REPEATS; ++repeat)
     {
-        cudaEvent_t start, stop;
-        ErrorCheck(cudaEventCreate(&start), __FILE__, __LINE__);
+        cudaEvent_t start, stop;   // 定义用于计时的CUDA事件变量
+        ErrorCheck(cudaEventCreate(&start), __FILE__, __LINE__);   // 初始化CUDA事件变量，注意这里传入的是start指向的内存地址
         ErrorCheck(cudaEventCreate(&stop), __FILE__, __LINE__);
-        ErrorCheck(cudaEventRecord(start), __FILE__, __LINE__);
-        cudaEventQuery(start);	//此处不可用错误检测函数
+        ErrorCheck(cudaEventRecord(start), __FILE__, __LINE__);   // 记录下代表计时开始的事件，注意这里传入的不是地址，而是start变量本身
+        cudaEventQuery(start);	//此处不可用错误检测函数，因为大概率会返回一个cudaError，但并不代表出错
 
-        addFromGPU<<<grid, block>>>(fpDevice_A, fpDevice_B, fpDevice_C, iElemCount);    // 调用核函数
+        addFromGPU<<<grid, block>>>(fpDevice_A, fpDevice_B, fpDevice_C, iElemCount);    // 调用需要被计时的核函数
 
-        ErrorCheck(cudaEventRecord(stop), __FILE__, __LINE__);
-        ErrorCheck(cudaEventSynchronize(stop), __FILE__, __LINE__);
+        ErrorCheck(cudaEventRecord(stop), __FILE__, __LINE__);   // 记录下代表计时结束的事件
+        ErrorCheck(cudaEventSynchronize(stop), __FILE__, __LINE__);   // 调用事件同步函数，是为了等待事件记录完成
         float elapsed_time;
-        ErrorCheck(cudaEventElapsedTime(&elapsed_time, start, stop), __FILE__, __LINE__);
+        ErrorCheck(cudaEventElapsedTime(&elapsed_time, start, stop), __FILE__, __LINE__);   // 用start和stop计算时间差，并赋给elapsed_time
         // printf("Time = %g ms.\n", elapsed_time);
 
-        if (repeat > 0)
+        if (repeat > 0)   // 第一次调用核函数通常会花费更多的时间，因此第一次调用时不计时
         {
             t_sum += elapsed_time;
         }
 
-        ErrorCheck(cudaEventDestroy(start), __FILE__, __LINE__);
+        ErrorCheck(cudaEventDestroy(start), __FILE__, __LINE__);   // 销毁用来计时的start和stop变量
         ErrorCheck(cudaEventDestroy(stop), __FILE__, __LINE__);
     }
 

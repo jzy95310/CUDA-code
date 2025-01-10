@@ -4,6 +4,11 @@
 
 cudaError_t ErrorCheck(cudaError_t error_code, const char* filename, int lineNumber)
 {
+    /**
+     * error_code为CUDA运行时返回的错误代码（cudaSuccess = 0），filename参数一般为__FILE__，即发生cudaError的文件名称，
+     * lindeNumber参数一般为__LINE__，即在文件中发生cudaError的具体行数
+     * 这里，cudaGetErrorName和cudaGetErrorString都为CUDA运行时API，分别返回cudaError的名称和cudaError的具体信息，返回值都为string
+     */
     if (error_code != cudaSuccess)
     {
         printf("CUDA error:\r\ncode=%d, name=%s, description=%s\r\nfile=%s, line%d\r\n",

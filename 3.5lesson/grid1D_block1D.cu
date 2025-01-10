@@ -5,6 +5,11 @@
  * brief      : 组织线程模型：一维网格一维线程块计算二维矩阵加法
 ***********************************************************************************************/
 
+/**
+ * 在使用一维网格一维线程块对二维数组进行计算时，我们可能无法将每个数组元素与每一个单独的线程一一对应。
+ * 因此，我们可以选择让每一个线程负责矩阵一列的运算。但这样的话，在编写核函数时，就需要使用for循环。
+ */
+
 
 #include <stdio.h>
 #include "../tools/common.cuh"
@@ -14,7 +19,7 @@ __global__ void addMatrix(int *A, int *B, int *C, const int nx, const int ny)
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
     if (ix < nx)
     {
-        for (int iy = 0; iy < ny; iy++)
+        for (int iy = 0; iy < ny; iy++)   // iy由循环指定
         {
             int idx = iy * nx + ix;
             C[idx] = A[idx] + B[idx];

@@ -95,10 +95,14 @@ int main(void)
 
 
     // 5、调用核函数在设备中进行计算
-    dim3 block(2048);
+    dim3 block(2048);   // 这里会报错，因为线程块大小最大不能超过1024
     dim3 grid((iElemCount + block.x - 1) / 2048); 
 
     addFromGPU<<<grid, block>>>(fpDevice_A, fpDevice_B, fpDevice_C, iElemCount);    // 调用核函数
+    /**
+     * 这里cudaGetLastError()和cudaDeviceSynchronize()需要一起用，因为CPU与GPU默认是异步运行的，因此CPU并不会等待GPU运行完核函数，
+     * 所以需要使用cudaDeviceSynchronize()进行同步，使CPU等待GPU执行完核函数，再查看同步前发生的最后一个cudaError错误
+     */
     ErrorCheck(cudaGetLastError(), __FILE__, __LINE__);
     ErrorCheck(cudaDeviceSynchronize(), __FILE__, __LINE__);
 

@@ -21,6 +21,7 @@ int main(void)
     cudaMemset(fpDevice_A, 0, 4);  // 设备内存初始化为0
 
     // 2、数据从主机复制到设备
+    // 但这里最后一个参数使用的是cudaMemcpyDeviceToHost从设备到主机，因此这里一定会报错
     ErrorCheck(cudaMemcpy(fpDevice_A, fpHost_A, 4, cudaMemcpyDeviceToHost), __FILE__, __LINE__); 
     
     // 3、释放主机与设备内存

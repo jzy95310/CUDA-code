@@ -5,6 +5,10 @@
  * brief      : 组织线程模型：二维网格一维线程块计算二维矩阵加法
 ***********************************************************************************************/
 
+/**
+ * 这个例子中一维线程块的维度为：(4, 1)
+ */
+
 #include <stdio.h>
 #include "../tools/common.cuh"
 
@@ -72,8 +76,8 @@ int main(void)
     }
 
     // calculate on GPU
-    dim3 block(4, 1);
-    dim3 grid((nx + block.x -1) / block.x, ny);
+    dim3 block(4, 1);   // 一维线程块维度：(4, 1)
+    dim3 grid((nx + block.x -1) / block.x, ny);   // 二维网格维度：(4, 8)
     printf("Thread config:grid:<%d, %d>, block:<%d, %d>\n", grid.x, grid.y, block.x, block.y);
     
     addMatrix<<<grid, block>>>(ipDevice_A, ipDevice_B, ipDevice_C, nx, ny);  // 调用内核函数

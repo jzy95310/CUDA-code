@@ -20,8 +20,8 @@ __global__ void addFromGPU(float *A, float *B, float *C, const int N)
     const int tid = threadIdx.x;
     const int id = tid + bid * blockDim.x; // 513  32*17=544
 
-    if (id >= N) return;
-    C[id] = add(A[id], B[id]);
+    if (id >= N) return;   // 当id >= 实际元素数量时，退出核函数，以免访问到错误的（即未初始化的）数组元素
+    C[id] = add(A[id], B[id]);   // 这里在核函数中调用了设备函数__device__ float add()
     
 }
 
@@ -98,7 +98,7 @@ int main(void)
     // 5、调用核函数在设备中进行计算
     dim3 block(32);
     // dim3 grid(iElemCount / 32);  // 513 / 32 = 16
-    dim3 grid((iElemCount + block.x - 1) / 32); //17
+    dim3 grid((iElemCount + block.x - 1) / 32); // 网格大小为17，513与32整除余1，因此需要额外一个线程块
 
     addFromGPU<<<grid, block>>>(fpDevice_A, fpDevice_B, fpDevice_C, iElemCount);    // 调用核函数
     cudaDeviceSynchronize();
