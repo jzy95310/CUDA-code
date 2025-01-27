@@ -7,7 +7,8 @@
 
 /**
  * 全局内存是GPU中延迟最大，容量最大，同时使用也最频繁的内存。全局内存中的数据对于所有的线程都可见，对于主机CPU也可见。
- * 全局内存的生命周期由主机CPU端决定，从主机端使用cudaMalloc分配内存时开始，到主机端使用cudaFree释放内存结束。
+ * 全局内存的生命周期由主机CPU端决定，从主机端使用cudaMalloc分配内存时开始，到主机端使用cudaFree释放内存结束。全局
+ * 内存保存在DRAM上。
  *
  * 全局内存的初始化分两种：
  * 1. 动态初始化 - 使用CUDA运行时API cudaMalloc动态声明内存空间，由cudaFree释放内存
@@ -15,8 +16,8 @@
  * 需要注意的是，静态全局变量（即带有__device__）需要在所有主机（__host__）和核函数（__global__）外部进行定义。
  * 在核函数中，可以直接对静态全局变量进行访问，主机CPU则不能“直接”访问静态全局变量。然而，主机CPU可以通过下面两个
  * 函数与静态全局内存进行通信：
- * 1. cudaMemcpyToSymbol - 将主机数据传递给静态全局内存
- * 2. cudaMemcpyFromSymbol - 将静态全局内存中的数据传递给主机
+ * 1. cudaMemcpyToSymbol - 将主机数据（符号变量）传递给静态全局内存
+ * 2. cudaMemcpyFromSymbol - 将静态全局内存中的数据（符号变量）传递给主机
  */
 
 #include <cuda_runtime.h>

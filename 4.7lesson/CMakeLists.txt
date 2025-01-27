@@ -8,7 +8,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)    # 表明如果找不到指定版本的CU
 set(CMAKE_CXX_STANDARD 14)  # 用于指定 C++ 编译器应该使用的 C++ 标准版本
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # 表明如果找不到指定版本的 C++ 编译器，将发出错误
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -arch=sm_86 -Xptxas -dlcm=ca")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -arch=sm_86 -Xptxas -dlcm=ca") # 使用-Xptxas -dlcm=ca编译指令启用L1缓存
 # set(CMAKE_CUDA_FLAGS_DEBUG="-G -g -O0")
 find_package(CUDA 11.7 REQUIRED)
 if (CUDA_FOUND)

@@ -5,6 +5,55 @@
  * brief      : GPU指标查询
 ***********************************************************************************************/
 
+/**
+ * Recall: 线程束中的所有线程是GPU中唯一能做到并行运行的单位。然而，在运行前，我们需要让GPU为每个线程束分配好
+ * 计算资源，包括程序计数器、寄存器、与共享内存。注意：寄存器与共享内存都属于片上（on-chip）资源，因此从一个线程束
+ * 切换到另一个线程束是没有时间损耗的。
+ * 每个SM都有32位的寄存器组。Recall: 在同一时刻，SM只能“并行”运行一个线程束，但可以“并发”执行多个线程束。此时，
+ * 寄存器资源会在这个线程束中的所有线程之间进行分配。因此，如果一个线程占用的寄存器资源过多，则可以并发执行的线程/线程束
+ * 数量就会变少。
+ * Recall: 共享内存仅在同一线程块中可见。如果一个线程块使用的共享内存越多，那么可以“并发”执行的线程块数量就会变少。
+ * 因此，在设计核函数时，应当尽量减少每个线程块消耗的共享内存，提高程序的并行性表现。
+ * 注意：如果一个线程块所占用的共享内存超过了99KB，则会导致核函数无法启动。
+ *
+ * SM占有率
+ * ---------------------------------------------------------------------------------------------
+ * 当计算资源被分配给线程块之后，该线程块被称为活跃的线程块，所包含的线程束被称为活跃的线程束。其中，活跃线程束分为
+ * 以下3种类型：
+ * 1. 选定的线程束 - 线程束活跃，并且正在执行
+ * 2. 阻塞的线程束 - 线程束尚未做好执行的准备（例如：计算资源不足、前一个线程束的计算结果还未传递过来、SM调度队列已满等）
+ * 3. 符合条件的线程束 - 线程束准备好了，但是尚未执行
+ * SM占有率 = 每个SM中活跃线程束的数量 / 最大驻留的线程束的数量，在设计CUDA程序时，要使得SM占有率尽量的高（或至少高于
+ * 某个值）。
+ *
+ * 网格和线程块设计准则
+ * ---------------------------------------------------------------------------------------------
+ * 1. 保证每个线程块中的线程数（即block_size）为32（线程束中的线程数量）的倍数
+ * 2. 线程块不要设计得太小（要使得最终的线程总数尽量接近SM上的最大驻留线程数）
+ * 3. 根据内核资源调整线程块大小（可以通过实验或经验进行调整）
+ * 4. 线程块的数量要远远大于SM的数量，保证设备有足够的并行
+ *
+ * 延迟隐藏
+ * ---------------------------------------------------------------------------------------------
+ * 时钟周期（clock cycle）可以看做是GPU运行的一个基本时间单位，一般以纳秒为单位来进行度量。在GPU中，在指令发出到
+ * 完成之间的时钟周期被称为指令延迟。延迟隐藏是指GPU的指令延迟被其他线程束的计算隐藏。要想达到计算资源的最大利用，就
+ * 需要在每个时钟周期内，线程束调度器（warp scheduler）都有一个符合条件的线程束。例如，若一个指令执行的时钟周期为
+ * 5个时钟周期，那么在发起这个指令之后，在后面所有4个时钟周期中，线程束调度器都要有一个符合条件（准备好了并待执行）
+ * 的线程束。
+ *
+ * 指令一般分两种：算术指令和内存指令
+ * 1. 算术指令 - 算术运算的指令延迟是指从开始运算到得到运算结果所需的时钟周期，一般为4个时钟周期（以英伟达官方为准）。
+ * 满足延迟隐藏所需的线程束数量可以估计为：延迟（周期） * 每个时钟周期的线程束吞吐量（throughput），可以参考英伟达官方
+ * GPU programming guide的表：Throughput of Native Arithmetic Instructions
+ * 这里需要注意区分吞吐量（throughput）和带宽（bandwidth）
+ * 带宽 - 理论峰值，指单位时间内最大可能的数据传输量
+ * 吞吐量 - 实际达到的值，指单位时间内任何形式的信息或操作的执行速度
+ * 2. 内存指令 - 内存指令的指令延迟是指从命令发出到数据到达目的地所需的时钟周期，一般为400到800个时钟周期（同样以
+ * 英伟达官方为准），由此可见，内存指令产生的延迟要远大于计算指令产生的延迟。
+ * 满足延迟隐藏所需的字节数可以估计为：延迟（周期） * 带宽（字节数），然后除以每个线程处理的字节数，就可以得到延迟隐藏
+ * 最少所需的线程数量。
+ */
+
 #include <cuda_runtime.h>
 #include <iostream>
 #include "common.cuh"
@@ -15,17 +64,17 @@ int main(int argc, char **argv)
     
     int devID = 0;
     cudaDeviceProp deviceProps;
-    CUDA_CHECK(cudaGetDeviceProperties(&deviceProps, devID));
+    CUDA_CHECK(cudaGetDeviceProperties(&deviceProps, devID));   // 使用CUDA运行时API来查询设备属性
     std::cout << "运行GPU设备:" << deviceProps.name << std::endl;
     std::cout << "SM数量：" << deviceProps.multiProcessorCount << std::endl;
     std::cout << "L2缓存大小：" << deviceProps.l2CacheSize / (1024 * 1024) << "M" << std::endl;
-    std::cout << "SM最大驻留线程数量：" << deviceProps.maxThreadsPerMultiProcessor << std::endl;
+    std::cout << "SM最大驻留线程数量：" << deviceProps.maxThreadsPerMultiProcessor << std::endl;   // 要提高程序并行性，就要使得SM上驻留的线程数量尽量大
     std::cout << "设备是否支持流优先级：" << deviceProps.streamPrioritiesSupported << std::endl;
     std::cout << "设备是否支持在L1缓存中缓存全局内存：" << deviceProps.globalL1CacheSupported << std::endl;
     std::cout << "设备是否支持在L1缓存中缓存本地内存：" << deviceProps.localL1CacheSupported << std::endl;
     std::cout << "一个SM可用的最大共享内存量：" << deviceProps.sharedMemPerMultiprocessor / 1024  << "KB" << std::endl;
     std::cout << "一个SM可用的32位最大寄存器数量：" << deviceProps.regsPerMultiprocessor / 1024 << "K" << std::endl;
-    std::cout << "一个SM最大驻留线程块数量：" << deviceProps.maxBlocksPerMultiProcessor << std::endl;
+    std::cout << "一个SM最大驻留线程块数量：" << deviceProps.maxBlocksPerMultiProcessor << std::endl;   // 要提高程序并行性，也要使SM上驻留的线程块数量尽量大
     std::cout << "GPU内存带宽：" << deviceProps.memoryBusWidth << std::endl;
     std::cout << "GPU内存频率：" << (float)deviceProps.memoryClockRate / (1024 * 1024) << "GHz" << std::endl;
 
